@@ -1,4 +1,4 @@
-export const OPENSKY_URL = 'https://opensky-network.org/api/states/all';
+export const OPENSKY_URL = '/api/opensky/states/all';
 
 export const POLL_INTERVAL_MS = 10_000;
 

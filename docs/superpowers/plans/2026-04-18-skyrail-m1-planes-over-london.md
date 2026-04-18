@@ -66,6 +66,9 @@ dist
 .env.local
 *.log
 .DS_Store
+
+# Local Claude Code instructions — never commit
+CLAUDE.md
 ```
 
 - [ ] **Step 2: Write `package.json`**

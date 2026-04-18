@@ -112,4 +112,25 @@ describe('fetchPlanes', () => {
     expect(calledUrl).toContain('lamax=3');
     expect(calledUrl).toContain('lomax=4');
   });
+
+  it('propagates AbortError when signal is aborted', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((_url: string, init?: { signal?: AbortSignal }) => {
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        });
+      })
+    );
+
+    const controller = new AbortController();
+    const promise = fetchPlanes(
+      { lamin: 0, lomin: 0, lamax: 1, lomax: 1 },
+      controller.signal
+    );
+    controller.abort();
+    await expect(promise).rejects.toThrow(/abort/i);
+  });
 });

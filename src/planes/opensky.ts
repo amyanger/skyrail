@@ -7,7 +7,10 @@ type OpenSkyResponse = {
   states: Array<Array<string | number | boolean | null>> | null;
 };
 
-export async function fetchPlanes(bbox: OpenSkyBbox): Promise<PlaneState[]> {
+export async function fetchPlanes(
+  bbox: OpenSkyBbox,
+  signal?: AbortSignal
+): Promise<PlaneState[]> {
   const params = new URLSearchParams({
     lamin: String(bbox.lamin),
     lomin: String(bbox.lomin),
@@ -15,7 +18,7 @@ export async function fetchPlanes(bbox: OpenSkyBbox): Promise<PlaneState[]> {
     lomax: String(bbox.lomax)
   });
 
-  const res = await fetch(`${OPENSKY_URL}?${params.toString()}`);
+  const res = await fetch(`${OPENSKY_URL}?${params.toString()}`, { signal });
   if (!res.ok) {
     throw new Error(`OpenSky fetch failed: ${res.status} ${res.statusText}`);
   }

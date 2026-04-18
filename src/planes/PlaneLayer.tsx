@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
-import type { Map as MLMap, GeoJSONSource } from 'maplibre-gl';
+import type { Map as MLMap, GeoJSONSource, MapLayerMouseEvent } from 'maplibre-gl';
 import { usePlaneStore } from './store';
 import { deadReckon } from './deadReckon';
 
 const SOURCE_ID = 'planes';
 const LAYER_ID = 'planes-symbol';
 const ICON_ID = 'plane-icon';
+const MAX_DEAD_RECKON_MS = 30_000;
 
 // White triangle pointing north (heading 0). Rotated per-feature by MapLibre.
 const PLANE_SVG = `
@@ -26,9 +27,23 @@ function svgToImage(svg: string): Promise<HTMLImageElement> {
 export function PlaneLayer({ map }: { map: MLMap }) {
   const rafRef = useRef<number | null>(null);
 
-  // One-time layer + icon setup.
+  // One-time layer + icon setup. Capture handler refs so we can remove them on unmount.
   useEffect(() => {
     let cancelled = false;
+
+    const onClick = (e: MapLayerMouseEvent) => {
+      const feature = e.features?.[0];
+      const icao = feature?.properties?.icao24 as string | undefined;
+      if (icao) usePlaneStore.getState().selectPlane(icao);
+    };
+    const onMouseEnter = () => {
+      map.getCanvas().style.cursor = 'pointer';
+    };
+    const onMouseLeave = () => {
+      map.getCanvas().style.cursor = '';
+    };
+
+    let handlersAttached = false;
 
     (async () => {
       const img = await svgToImage(PLANE_SVG);
@@ -57,21 +72,19 @@ export function PlaneLayer({ map }: { map: MLMap }) {
         });
       }
 
-      map.on('click', LAYER_ID, (e) => {
-        const feature = e.features?.[0];
-        const icao = feature?.properties?.icao24 as string | undefined;
-        if (icao) usePlaneStore.getState().selectPlane(icao);
-      });
-      map.on('mouseenter', LAYER_ID, () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', LAYER_ID, () => {
-        map.getCanvas().style.cursor = '';
-      });
+      map.on('click', LAYER_ID, onClick);
+      map.on('mouseenter', LAYER_ID, onMouseEnter);
+      map.on('mouseleave', LAYER_ID, onMouseLeave);
+      handlersAttached = true;
     })();
 
     return () => {
       cancelled = true;
+      if (handlersAttached) {
+        map.off('click', LAYER_ID, onClick);
+        map.off('mouseenter', LAYER_ID, onMouseEnter);
+        map.off('mouseleave', LAYER_ID, onMouseLeave);
+      }
     };
   }, [map]);
 
@@ -81,7 +94,7 @@ export function PlaneLayer({ map }: { map: MLMap }) {
       const now = Date.now();
       const planes = Object.values(usePlaneStore.getState().planes);
       const features = planes.map((p) => {
-        const dt = now - p.last_seen_local;
+        const dt = Math.min(now - p.last_seen_local, MAX_DEAD_RECKON_MS);
         const pos = deadReckon(p, dt);
         return {
           type: 'Feature' as const,

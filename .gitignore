@@ -5,5 +5,15 @@ dist
 *.log
 .DS_Store
 
+# TypeScript incremental build cache + stray config emits from `tsc -b`
+*.tsbuildinfo
+/vite.config.js
+/vite.config.d.ts
+/vitest.config.js
+/vitest.config.d.ts
+
+# Local soak-test screenshots
+/docs/smoke-*.png
+
 # Local Claude Code instructions — never commit
 CLAUDE.md
